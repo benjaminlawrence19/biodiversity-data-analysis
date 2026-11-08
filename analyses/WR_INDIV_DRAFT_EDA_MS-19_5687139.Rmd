@@ -1,0 +1,607 @@
+---
+title: "ST117 Individual DRAFT Written Report - Phase 1 (EDA)"
+author: "My WARWICK ID 5687139 (Report Pod MS-19)"
+date: "2026-04-16" 
+output: pdf_document
+geometry: top=1cm, bottom=1cm
+---
+- Please replace 1234567, XY-ab in filename.  
+- Please replace 1234567, XY-ab, and 1999-12-31 in the header.  
+- Please read the document "WR Assessment, Style, and Submission Guidance" (see Moodle).  
+- By submitting this assignment, you confirm that you have read and will adhere to the guidance on AI set out in that document.  
+- Remember that you are responsible for everything that you submit.  
+- Word, page, figure, and table limits do not apply at the DRAFT stage, but are included here for reference
+
+```{r setup, include=FALSE}
+# Code to setup packages should go here, for example:
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(RColorBrewer)
+```
+
+
+# Task 1: Context and study design
+*Limit for all dataset combined: 0.5 pages text in 11pt font with single line spacing.*
+
+The vegetation datasets monitor long term change across multiple sites using different designs and sampling frequencies. Baseline vegetation monitoring (1991–2000) uses vegetation maps and approximately 400 2m × 2m plots to characterise vegetation types at each site including Glensaugh, Moor House, Rothamsted, Wytham, Porton Down and Cairngorms. Fine-grain vegetation monitoring (1994–2015) samples species presence every three years within randomly selected 40cm × 40cm cells nested inside 10m × 10m plots across multiple vegetation types. The sampling sites are those in the baseline monitoring as well as Drayton, Hillsborough, North Wyke, Sourhope, Alice Holt and Yr Wyddfa (Snowdon). Woodland vegetation monitoring (1993–2014) occurs every nine years in woodland coarse-grain plots at Wytham and Alice Holt, recording tree species, diameter at breast height (dbh), height, stem number and seedling abundance within 10m × 10m plots.
+
+The invertebrate datasets measure species abundance and phenology rather than vegetation composition. Moth monitoring (1992–2015) uses standard light traps operated nightly near sampling sites to record Macrolepidoptera abundance at 11 UK locations. The data is recorded nightly at 12 locations (Drayton, Glensaugh, Hillsborough, Moor House, North Wyke, Rothamsted, Sourhope, Wytham, Alice Holt, Porton Down, Cairngorms) Butterfly monitoring (1993–2015) records weekly butterfly counts along fixed transects between April and September, with butterflies counted inside a standardised 5m × 5m × 5m observation box. The sampling sites are the same as the moth monitoring, except Porton Down is replaced by Yr Wyddfa.
+
+The datasets differ in both spatial and temporal structure. Vegetation monitoring uses hierarchical plot-based sampling with repeated observations nested within sites, plots and cells, while invertebrate monitoring uses repeated transect walks or light traps with substantially higher sampling frequency. Fine-grain and baseline vegetation datasets support analyses of plant diversity and habitat change, whereas woodland monitoring investigates woodland structure, tree growth and regeneration. Butterfly and moth datasets support analyses of abundance, seasonal flight activity, phenology and potential responses of biodiversity to environmental change.
+
+
+# Task 2: Diagrams
+*The diagrams can be drawn by hand or created with suitable software.*
+
+You may use the R chunks below, but replace the generic filenames with your own. Log 4 provides resources on R Markdown, including guidance on how to include image files (e.g. photographs).
+
+Remove the hashtags in the commands inside the chunks to run them.
+
+## Fine-grain vegetation
+```{r Fine-grain data diagram, out.width='80%'}
+gra <- read.csv("ECN_VF1.csv")
+
+barplot(table(gra$SYEAR),
+        main = "Sampling effort by year",
+        ylab = "Number of observations")
+
+knitr::include_graphics("Fine-Grain.png")
+```
+
+## Woodland
+```{r Woodland data diagram, out.width='80%'}
+wdl <- read.csv("ECN_VW1.csv")
+
+barplot(table(wdl$SYEAR),
+        main = "Sampling effort by year",
+        ylab = "Number of observations")
+
+knitr::include_graphics("Woodland.png")
+```
+
+## Baseline vegetation
+```{r Baseline vegetation data diagram, out.width='80%'}
+bas <- read.csv("ECN_VB1.csv")
+
+barplot(table(bas$SYEAR),
+        main = "Sampling effort by year",
+        ylab = "Number of observations")
+
+knitr::include_graphics("Baseline.png")
+```
+
+## Butterflies
+```{r Butterfly data diagram, out.width='80%'}
+btf <- read.csv("ECN_IB1.csv")
+
+btf$SDATE <- as.Date(btf$SDATE, format = "%d-%b-%y")
+btf$SYEAR <- as.numeric(format(btf$SDATE, "%Y"))
+barplot(table(btf$SYEAR),
+        main = "Sampling effort by year",
+        ylab = "Number of observations")
+
+knitr::include_graphics("Butterflies.png")
+```
+
+## Moths
+```{r Moth data diagram, out.width='80%'}
+mth <- read.csv("ECN_IM1.csv")
+
+mth$SDATE <- as.Date(mth$SDATE, format = "%d-%b-%y")
+mth$SYEAR <- as.numeric(format(mth$SDATE, "%Y"))
+barplot(table(mth$SYEAR),
+        main = "Sampling effort by year",
+        ylab = "Number of observations")
+
+knitr::include_graphics("Moths.png")
+```
+
+
+# Task 3: Data quality assessment 
+*Limits per dataset: 0.5 pages text in 11pt font with single line spacing + 2 figures + 1 table.*
+
+## Fine-grain vegetation
+```{r Fine-grain DQA}
+#uneven sampling?
+barplot(table(gra$SITECODE),
+        main = "Sampling effort by site",
+        ylab = "Number of observations")
+
+#columns with missing values
+colSums(is.na(gra))
+
+#table counting observations 
+table(gra$SITECODE, gra$SYEAR)
+```
+
+General Overview
+Data is structurally consistent with each measurement recording the site, year, plot, cell and species. All cells filled in apart from when FIELDNAME is not VEG_SPEC and there is an error in the quality of recorded data. The sampling is not regular over time as there are spikes in the amount of data recorded every 3 years. Data seems to be valid as, for example, there are always numerical values in the VALUE column with no negatives. Similar correctness in all the other columns.
+
+Missingness
+Some plots have much fewer observations than others. This is notably seen with very few recordings in T06. Overall, missingness seems to be caused by data not being recorded continuously rather than random missing rows.
+
+Data issues
+Firstly, there seems to be uneven sampling. This is seen by a large difference in the number of observations per year and also per site. This means that averages will be biased in favour of years and sites with more observations. Variance may be high for areas with low amounts of recording. Secondly, there are no absence entries which means that true absences cannot be distinguished from non-sampling.
+
+
+## Woodland
+```{r Woodland DQA}
+#uneven sampling?
+barplot(table(wdl$SITECODE),
+        main = "Sampling effort by site",
+        ylab = "Number of observations")
+
+#columns with missing values
+colSums(is.na(wdl))
+
+#table counting observations 
+table(wdl$SITECODE, wdl$SYEAR)
+```
+
+General Overview
+Consistency
+Data is structurally consistent with each measurement recording the site, year, plot, cell, tree, stem and species. Most trees have diameter and number of stems recorded. However, height is often missing in many parts of the dataset. There seems to be more recordings in the early years and later years compared to the middle years. Most values are normal, however, some trees have extremely large diameters (the highest was 803cm). One tree was also recorded as having a height of 0 which must be inaccurate. There are are also other trees with a height recorded as 0 but this is due to a recording quality issue.
+
+Missingness
+Sites T05 and T06 have very few recordings compared to T08 and T09. This is due to recordings only taking place in 1994. In addition many CELLID and STEMID are sometimes missing when TREEID and DIAMETER is not. TREE_SPEC is also missing for one recording of diameter. HEIGHT only started being recorded in the later years. There is random and systematic missingness at play.
+
+Data issues
+Firstly, there is an uneven sampling effort. Similarly to fine-grain, there is a large difference in the number of observations per year and site. Secondly, height is absent in the earlier years which means that the data for height can only be analysed for some of the years so apparent environmental change may accidentally be due to a change in variable recording.
+
+
+## Baseline vegetation
+
+```{r Baseline DQA}
+#uneven sampling?
+barplot(table(bas$SITECODE),
+        main = "Sampling effort by site",
+        ylab = "Number of observations")
+
+#columns with missing values
+colSums(is.na(bas))
+
+#table counting observations 
+table(bas$SITECODE, bas$SYEAR)
+```
+
+General Overview
+Data is structurally consistent with each measurement recording the site, year, plot, plot type and species. All cells are filled in. Most of the data is recorded in 1993-1995 with much less recorded in the later years with the last year of recording being 2000. There are a few data recording quality issues.
+
+Missingness
+Site T06 hardly has any recordings and T01 and T03 don't have many either. As mentioned, all cells are filled in.
+
+Data issues
+Firstly, absence of species is unrecorded which means that true absences cannot be distinguished from non-sampling. Secondly, there is an unevern sampling effort. Again, this is similar to fine-grain and woodland recordings with a large difference in the number of observations per year and site.
+
+
+## Butterflies
+
+```{r Butterfly DQA}
+#uneven sampling?
+barplot(table(btf$SITECODE),
+        main = "Sampling effort by site",
+        ylab = "Number of observations")
+
+#zero inflation?
+hist(btf$VALUE, main = "Distribution of Values", breaks = 200, xlim = c(0,20))
+mean(btf$VALUE == 0, na.rm = TRUE)
+
+#columns with missing values
+colSums(is.na(btf))
+
+#table counting observations 
+table(btf$SITECODE, btf$SYEAR)
+```
+
+General Overview
+There seems to be some inconsistency as there are some repeated observations with differing time stamps or duplicate identifiers. All cells are filled in. There are no big spikes or dips in recording across the years. Data is valid as whenever VALUE is 0 it is matched with a FIELDNAME XX (representing no species recorded) as expected.
+
+Missingness
+Certain sites such are T07, T11 and T12 have fewer recordings than others. This is due to butterflies not being recorded at the start and and of the study. Other sites also have a random year with no recordings. There is clear systematic missingness. The consequences include risk of biased results and reduced comparability between sites or time periods.
+
+Data issues
+Firstly, there is an uneven sampling effort where some sites have many more recorings than others. This results in well sampled areas being over represented. In addition, there are sites with sytematic missingnesa as mentioned earlier. Secondly, there is zero inflation shown by a large proportion of observations recording 0 values where no butterflies were recorded for that site, LCODE, date and section combination. In addition the proportion of 0 values is roughly 30%. This can lead to biased results.
+
+
+## Moths
+
+```{r Moth DQA}
+#uneven sampling?
+barplot(table(mth$SITECODE),
+        main = "Sampling effort by site",
+        ylab = "Number of observations")
+
+#zero inflation?
+hist(mth$VALUE, main = "Distribution of Values", breaks = 1500, xlim = c(0,20))
+mean(mth$VALUE == 0, na.rm = TRUE)
+
+#columns with missing values
+colSums(is.na(mth))
+
+#table counting observations 
+table(mth$SITECODE, mth$SYEAR)
+```
+General Overview
+Data is structurally consistent with each measurement recording the site, date, and species. All cells are filled in. There number of recordings across the years is generally consistent with the exception of 1992. Similar to butterflies, data is valid as whenever VALUE is 0 it is matched with a FIELDNAME XX as expected.
+
+Missingness
+Site T12 has noticeably fewer recordings than the others, Which is due to only starting recording in 2001. In addition, some sites have random years in which no values were recorded. Similar to butterflies, there is clear systematic missingnes and it could lead to biased results.
+
+Data issues
+Firstly, there is an uneven sampling effort as T12 has far fewer recordings than others. This may result in T12 being under represented. In addition, there are sites with sytematic missingness as mentioned earlier. Secondly, there is zero inflation shown by a large proportion of observations recording 0 values where no moths were recorded for that site, LCODE and date combination. In addition the proportion of 0 values is roughly 8%. This can lead to biased results.
+
+
+# Task 4: Exploratory data analysis 
+*Limits per dataset: 0.5 pages text in 11pt font with single line spacing + 4 figures + 1 table.*
+
+## Fine-grain vegetation
+```{r Fine-grain EDA}
+gra <- subset(gra, FIELDNAME == "VEG_SPEC")
+
+graCount <- aggregate(VALUE ~ SITECODE + SYEAR,
+                      data = gra,
+                      FUN = function(x) length(unique(x)))
+names(graCount)[3] <- "GRACOUNT"
+hist(graCount$GRACOUNT,
+     main = "Unique species per site",
+     xlab = "Number of unique species",
+     breaks = 10)
+
+unique <- aggregate(VALUE ~ SYEAR,
+                    data = gra,
+                    FUN = function(x) length(unique(x)))
+names(unique)[2] <- "UNIQUE"
+total <- aggregate(VALUE ~ SYEAR,
+                   data = gra,
+                   FUN = length)
+names(total)[2] <- "TOTAL"
+ratio <- merge(unique, total, by = "SYEAR")
+ratio$RATIO <- 100*ratio$UNIQUE/ratio$TOTAL
+plot(ratio$SYEAR, ratio$RATIO,
+     type = "b",
+     main = "Diversity over time",
+     xlab = "Year",
+     ylab = "Unique observations per 100 observations")
+
+unique2 <- aggregate(VALUE ~ SITECODE,
+                     data = gra,
+                     FUN = function(x) length(unique(x)))
+names(unique2)[2] <- "UNIQUE"
+total2 <- aggregate(VALUE ~ SITECODE,
+                    data = gra,
+                    FUN = length)
+names(total2)[2] <- "TOTAL"
+ratio2 <- merge(unique2, total2, by = "SITECODE")
+ratio2$RATIO <- 100*ratio2$UNIQUE/ratio2$TOTAL
+barplot(ratio2$RATIO,
+        names.arg = ratio2$SITECODE,
+        main = "Site Diversity",
+        xlab = "Site",
+        ylab = "Unique observations per 100 observations")
+
+df <- aggregate(VALUE ~ SITECODE + SYEAR,
+                data = gra,
+                FUN = length)
+names(df)[3] <- "COUNTOBS"
+df2 <- merge(graCount, df, by = c("SITECODE", "SYEAR"))
+plot(df2$COUNTOBS, df2$GRACOUNT,
+     main = "Diversity vs number of observations",
+     xlab = "Number of observations",
+     ylab = "Number of unique species")
+abline(lm(GRACOUNT ~ COUNTOBS, data = df2))
+cor(df2$COUNTOBS, df2$GRACOUNT)
+```
+
+Firstly, we investigate the species diversity across the sites. I used a histogram of the number of unique species per site-year combination to find out how diversity is spread. The plot shows a peak around 80-120 unique species with a long tail on the right. This indicates a right-skewed distribution, where most plots have moderate diversity and a small number have very high diversity.
+
+Secondly, we investigate how species diversity changes over time. I used a line graph to identify trends over time. There is a noticeable spike in 2001 and a noticeable drop every 3 years. This coincides with the total number of observations graph: if total observations are high then the ratio is low.
+
+Next, we investigate how species diversity differs for each site. I used a bar graph to identify differences. There are tall bars for T03 and T06 and low bars for T04 and T07. Similarly to the temporal graph, if total observations are high then the ratio is low. This means that apparent diversity is a consequence of uneven sampling rather than genuine ecological differences.
+
+Finally, we investigate the relationship between number of observations and number of unique species. I used a scatter plot with a fitted regression line. There is a strong positive correlation (~0.85) with values clustered to the bottom left of the graph and with much more spread and variance as number of observations increases. This suggests that diversity increases with observations, confirming that both temporal and spatial patterns are strongly influenced by sampling intensity rather than purely biological processes.
+
+## Woodland
+```{r Woodland EDA}
+sub <- subset(wdl, FIELDNAME == "DIAMETER" & VALUE != 0)
+
+hist(sub$VALUE,
+     main = "Distribution of tree diameters",
+     xlab = "Diameter (cm)",
+     xlim = c(0,100),
+     breaks = 400)
+
+mn <- aggregate(VALUE ~ SYEAR,
+                data = sub,
+                FUN = mean)
+plot(mn$SYEAR, mn$VALUE,
+     type = "b",
+     main = "Mean tree diameter over time",
+     xlab = "Year",
+     ylab = "Mean diameter (cm)")
+
+mn2 <- aggregate(VALUE ~ SITECODE,
+                 data = sub,
+                 FUN = mean)
+barplot(mn2$VALUE,
+        names.arg = mn2$SITECODE,
+        main = "Mean tree diameter over site",
+        xlab = "Site",
+        ylab = "Mean diameter (cm)")
+
+df <- subset(wdl, STEMID != 999 & FIELDNAME %in% c("DIAMETER", "HEIGHT", "NUM_STEMS", "DISTANCE"))
+df2 <- reshape(df, timevar = "FIELDNAME",
+  idvar = c("SITECODE", "SYEAR", "PLOTPID", "CELLID", "TREEID", "STEMID", "TREE_SPEC"),
+  direction = "wide")
+
+names(df2) <- sub("^VALUE\\.", "", names(df2))
+df3 <- subset(df2, !is.na(NUM_STEMS))
+plot(df3$HEIGHT, df3$NUM_STEMS,
+     main = "Number of stems vs height",
+     xlab = "Height",
+     ylab = "Number of stems")
+abline(lm(NUM_STEMS ~ HEIGHT, data = df3))
+cor(df3$HEIGHT, df3$NUM_STEMS)
+```
+
+Firstly, we investigate tree diameter across sites. I used a histogram of tree diameter values to examine the distribution. The plot was restricted to 100cm to reduce the effect of extreme values in the tail. The distribution is strongly right-skewed, with a peak around 8–12cm, indicating that most trees are relatively small while a smaller number of trees have very large diameters.
+
+Secondly, we investigate how tree diameter changes over time. I used a line graph to identify trends over time. There is a noticeable spike in 1994 which is appear to be an outlier. Otherwise, there seems to be an upwards trend in mean diameter. This suggests that over time, the trees are growing and increasing their diameter.
+
+Next, we investigate how tree diameter differs for each site. I used a bar graph to identify differences. T06 has the highest mean diameter while T05 has the lowest. T08 and T09 have very similar mean diameter. This is likely because T05 and T06 have very few recordings compared to the other two which may bias the site means.
+
+Finally, we investigate the relationship between hieght and number of stems. I used a scatter plot with a fitted regression line. There is very little or no correlation with values clustered to the bottom of the graph as the majority of trees have fewer than five stems. The trees with the most stems are 5-10m tall with trees over 20m all having fewer than 10 stems. 
+
+## Baseline vegetation
+```{r Baseline EDA}
+bas <- subset(bas, FIELDNAME == "VEG_SPEC")
+
+basCount <- aggregate(VALUE ~ SITECODE + SYEAR,
+                      data = bas,
+                      FUN = function(x) length(unique(x)))
+names(basCount)[3] <- "BASCOUNT"
+hist(basCount$BASCOUNT,
+     main = "Unique species per site",
+     xlab = "Number of unique species",
+     breaks = 10)
+
+unique <- aggregate(VALUE ~ SYEAR,
+                    data = bas,
+                    FUN = function(x) length(unique(x)))
+names(unique)[2] <- "UNIQUE"
+total <- aggregate(VALUE ~ SYEAR,
+                   data = bas,
+                   FUN = length)
+names(total)[2] <- "TOTAL"
+ratio <- merge(unique, total, by = "SYEAR")
+ratio$RATIO <- 100*ratio$UNIQUE/ratio$TOTAL
+plot(ratio$SYEAR, ratio$RATIO,
+     type = "b",
+     main = "Diversity over time",
+     xlab = "Year",
+     ylab = "Unique observations per 100 observations")
+
+unique2 <- aggregate(VALUE ~ SITECODE,
+                     data = bas,
+                     FUN = function(x) length(unique(x)))
+names(unique2)[2] <- "UNIQUE"
+total2 <- aggregate(VALUE ~ SITECODE,
+                    data = bas,
+                    FUN = length)
+names(total2)[2] <- "TOTAL"
+ratio2 <- merge(unique2, total2, by = "SITECODE")
+ratio2$RATIO <- 100*ratio2$UNIQUE/ratio2$TOTAL
+barplot(ratio2$RATIO,
+        names.arg = ratio2$SITECODE,
+        main = "Site Diversity",
+        xlab = "Site",
+        ylab = "Unique observations per 100 observations")
+
+df <- aggregate(VALUE ~ SITECODE + SYEAR,
+                data = bas,
+                FUN = length)
+names(df)[3] <- "COUNTOBS"
+df2 <- merge(basCount, df, by = c("SITECODE", "SYEAR"))
+plot(df2$COUNTOBS, df2$BASCOUNT,
+     main = "Diversity vs number of observations",
+     xlab = "Number of observations",
+     ylab = "Number of unique species")
+abline(lm(BASCOUNT ~ COUNTOBS, data = df2))
+cor(df2$COUNTOBS, df2$BASCOUNT)
+```
+Firstly, we investigate the species diversity across the sites. I used a histogram of the number of unique species per site-year combination to find out how diversity is spread. As the number of site and year combinations are low, the frequency for each bin is low. However, the range from 140-200 unique species seems to be the peak with a smaller frequency generally being recorded either side of this.
+
+Secondly, we investigate how species diversity changes over time. I used a line graph to identify trends over time. There is a huge spike in 1997 and 2000 but similarly to the fine-grain graph, it seems that if total observations are high then the ratio is low.
+
+Next, we investigate how species diversity differs for each site. I used a bar graph to identify differences. There is a tall bar for T06 and lower spikes for T07 and T10. Similarly to the temporal graph, if total observations are high then the ratio is low. This means that apparent diversity is a consequence of uneven sampling rather than genuine ecological differences.
+
+Finally, we investigate the relationship between number of observations and number of unique species. I used a scatter plot with a fitted regression line. There is some positive correlation (~0.5) with high variance and points roughly spead evenly across this line. This suggests that diversity increases with observations, and similarly to fine-grain, this confirms that both temporal and spatial patterns are strongly influenced by sampling intensity rather than purely biological processes.
+
+## Butterflies
+```{r Butterfly EDA}
+btfCount <- aggregate(VALUE ~ SITECODE + LCODE + SDATE,
+                          data = btf,
+                          FUN = sum)
+btfCount2 <- subset(btfCount, btfCount$VALUE != 0)
+
+hist(btfCount2$VALUE,
+     main = "Butterfly Count for unique location and date",
+     xlab = "Count",
+     xlim = c(0,200),
+     breaks = 200)
+
+btf$SDATE <- as.Date(btf$SDATE, format = "%d-%b-%y")
+btf$SYEAR <- as.numeric(format(btf$SDATE, "%Y"))
+btfCount3 <- aggregate(VALUE ~ SYEAR, data = btf, FUN = sum)
+plot(btfCount3$SYEAR, btfCount3$VALUE, 
+     type = "b",
+     main = "Counts over time", 
+     xlab = "Year", 
+     ylab = "Count")
+btfCount4 <- aggregate(VALUE ~ SITECODE, data = btf, FUN = sum) 
+barplot(btfCount4$VALUE,
+        names.arg = btfCount4$SITECODE,
+        main = "Counts for each site", 
+        xlab = "Site", ylab = "Count")
+
+obs <- aggregate(VALUE ~ SITECODE + LCODE + SDATE,
+                 data = btf,
+                 FUN = length)
+df <- merge(btfCount, obs,
+            by = c("SITECODE", "LCODE", "SDATE"),
+            suffixes = c("_btfCount", "_obs"))
+plot(df$VALUE_obs, df$VALUE_btfCount,
+     xlab = "Number of observations",
+     ylab = "Total count",
+     main = "Total count vs observations")
+abline(lm(VALUE_obs ~ VALUE_btfCount, data = df))
+cor(df$VALUE_obs, df$VALUE_btfCount)
+```
+Firstly, we investigate how counts are distributed. I used a histogram of the butterfly count per site-date combination. The most common count is 0-5 observations. There is a steep drop off and a long tail after. 
+
+Secondly, we investigate how butterfly counts changes over time. I used a line graph to identify trends over time. The graph is a little erratic with a seemingly downwards trend after peaking in 1996. This seems to coincide with the total observations graph.
+
+Next, we investigate how butterfly counts differ for each site. I used a bar graph to identify differences. This is very similar to the total observations graph but with the difference in height being more exaggerated here.
+
+Finally, we investigate the relationship between number of observations and the total butterfly count. I used a scatter plot with a fitted regression line. There is strong correlation (~0.8) however this is mainly because of the number of points with very low observations. It is clear from the graph that the relationship is not linear because as the number of observations increases, the total count increases more. Data are also much more spread out with higher number of observations.
+
+## Moths
+```{r Moth EDA}
+sub <- subset(mth, mth$FIELDNAME != "Q1")
+
+mthCount <- aggregate(VALUE ~ SITECODE + LCODE + SDATE,
+                      data = sub,
+                      FUN = sum)
+mthCount2 <- subset(mthCount, mthCount$VALUE != 0)
+
+hist(mthCount2$VALUE,
+     main = "Moth Count for unique location and date",
+     xlab = "Count",
+     xlim = c(0,200),
+     breaks = 400)
+
+sub$SDATE <- as.Date(sub$SDATE, format = "%d-%b-%y")
+sub$SYEAR <- as.numeric(format(sub$SDATE, "%Y"))
+mthCount3 <- aggregate(VALUE ~ SYEAR, data = sub, FUN = sum)
+plot(mthCount3$SYEAR, mthCount3$VALUE, 
+     type = "b",
+     main = "Counts over time", 
+     xlab = "Year", 
+     ylab = "Count")
+mthCount4 <- aggregate(VALUE ~ SITECODE, data = sub, FUN = sum) 
+barplot(mthCount4$VALUE,
+        names.arg = mthCount4$SITECODE,
+        main = "Counts for each site", 
+        xlab = "Site", ylab = "Count")
+
+obs <- aggregate(VALUE ~ SITECODE + LCODE + SDATE,
+                 data = sub,
+                 FUN = length)
+df <- merge(mthCount, obs,
+            by = c("SITECODE", "LCODE", "SDATE"),
+            suffixes = c("_mthCount", "_obs"))
+plot(df$VALUE_obs, df$VALUE_mthCount,
+     xlab = "Number of observations",
+     ylab = "Total count",
+     main = "Total count vs observations")
+abline(lm(VALUE_obs ~ VALUE_mthCount, data = df))
+cor(df$VALUE_obs, df$VALUE_mthCount)
+```
+Firstly, we investigate how counts are distributed. I used a histogram of the moth count per site-date combination. The most common count is 0-5 observations. There is a steep drop off and a long tail after. The graph looks similar to the one for butterflies but with a larger drop off.
+
+Secondly, we investigate how moth counts changes over time. I used a line graph to identify trends over time. The graph has a few spikes and troughs we not much pattern apart from a upwards trend from 1998-2006. There is some similarities with the total observations graph.
+
+Next, we investigate how moth counts differ for each site. I used a bar graph to identify differences. This is very similar to the total observations graph except the bars for T08 and T09 are less high here.
+
+Finally, we investigate the relationship between number of observations and the total butterfly count. I used a scatter plot with a fitted regression line. There is some correlation (~0.65) however, similarly to the butterfly graph, this is mainly because of the number of points with very low observations. It is clear from the graph that the relationship is not linear because as the number of observations increases, the total count increases less. Data are also much more spread out with higher number of observations. There are also many points with very high total count despite a low number of observations.
+
+# Task 5: Cross-data comparison for vegetation 
+*Limits: 200 words text + 1 figure + 1 table.*
+
+## Vegetation
+```{r Vegetation}
+
+graSub <- subset(gra, SYEAR %in% c(2005, 2008, 2011) & SITECODE %in% c("T02", "T05", "T08", "T09", "T11") & FIELDNAME == "VEG_SPEC")
+
+graDiv <- aggregate(VALUE ~ SITECODE + SYEAR,
+                    data = graSub,
+                    FUN = function(x) length(unique(x)))
+names(graDiv)[3] <- "DIV"
+
+graObs <- aggregate(VALUE ~ SITECODE + SYEAR,
+                    data = graSub,
+                    FUN = length)
+names(graObs)[3] <- "OBS"
+
+graDf <- merge(graDiv, graObs, by = c("SITECODE","SYEAR"))
+
+plot(graDf$OBS, graDf$DIV,
+     main = "Fine-grain Diversity vs Observations",
+     xlab = "Observations",
+     ylab = "Diversity")
+abline(lm(DIV ~ OBS, data = graDf), col = "red")
+cor(graDf$OBS, graDf$DIV)
+
+
+wdlSub <- subset(wdl, FIELDNAME == "DIAMETER" & VALUE != 0 & SITECODE %in% c("T08", "T09"))
+
+wdlMn <- aggregate(VALUE ~ SYEAR,
+                   data = wdlSub,
+                   FUN = mean)
+names(wdlMn)[2] <- "MEANDIAM"
+
+plot(wdlMn$SYEAR, wdlMn$MEANDIAM,
+     main = "Woodland Diameter over time",
+     xlab = "Year",
+     ylab = "Mean Diameter (cm)")
+abline(lm(MEANDIAM ~ SYEAR, data = wdlMn), col = "red")
+cor(wdlMn$SYEAR, wdlMn$MEANDIAM)
+
+```
+For fine-grain, we investigate species diversity against number of observations. I chose to subset the data for sites T02, T05, T08, T09 and T11 in years 2005, 2008 and 2009. This is because they had similar total observation numbers as found earlier. I used a scatter plot to show patterns with a fitted regression line. There is strong positive correlation (~0.8). This is higher than the ealrier graph without subsetting. This clearly shows that apparent diversity is largely driven by sampling intensity rather than ecological change.
+
+For woodland, we investigate mean diameter against number of observations. I chose to subset the data for sites T08 and T09 because the other 2 sites have very few observations. I used a scatter plot to show patterns with a fitted regression line. There is very strong positive correlation (~0.9). This suggests that the the result is likely not dependent on the sampling effort so the woodland measurements are less sensitive to uneven sampling.
+
+# Task 6: Cross-data comparison for invertebrates
+*Limits: 200 words text + 1 figure + 1 table.*
+
+## Invertebrates
+```{r Invertebrates}
+btf$SDATE <- as.Date(btf$SDATE, format = "%d-%b-%y")
+btf$SYEAR <- as.numeric(format(btf$SDATE, "%Y"))
+
+btfSub <- subset(btf, SYEAR == 1995)
+
+btfCount <- aggregate(VALUE ~ SDATE,
+                      data = btfSub,
+                      FUN = sum)
+
+
+mth$SDATE <- as.Date(mth$SDATE, format = "%d-%b-%y")
+mth$SYEAR <- as.numeric(format(mth$SDATE, "%Y"))
+
+mthSub <- subset(mth, SYEAR == 1995 & FIELDNAME != "Q1")
+
+mthCount <- aggregate(VALUE ~ SDATE,
+                      data = mthSub,
+                      FUN = sum)
+
+plot(btfCount$SDATE, btfCount$VALUE,
+     type = "l",
+     col = "red",
+     main = "Butterflies vs Moths 1995",
+     xlab = "Date",
+     ylab = "Count")
+
+lines(mthCount$SDATE, mthCount$VALUE, type = "l", col = "blue")
+
+legend("topleft",
+       legend = c("Butterflies", "Moths"),
+       col = c("red", "blue"),
+       lty = 1)
+```
+We investigate how Butterfly and Moth counts vary over time in 1995. I chose to focus on 1995 since this is when observations were the highest for both. I used a line plot with both lines on the same plot which allows easier comparison. Clearly counts are high in July and August with much lower counts from April to June and September. The peaks for the butterflies are generally higher. The high counts in July and August suggest that butterfly and moth abundance is linked to temperature. The spikes show that there is uneven sampling going on as we would expect more stability. There also doesn't seem to be any pattern of spikes of butterflies and moths being at the same time.

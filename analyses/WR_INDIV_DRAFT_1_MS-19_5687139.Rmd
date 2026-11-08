@@ -1,0 +1,167 @@
+---
+title: "ST117 Individual DRAFT Written Report - Phase 2 Task 1 (Woodland Vegetation – Tree Measurements)"
+author: "My WARWICK ID 5687139 (Report Pod MS-19)"
+date: "2026-04-18" 
+output: pdf_document
+geometry: top=1cm, bottom=1cm
+---
+- Please replace 1234567, XY-ab in filename.  
+- Please replace 1234567, XY-ab, and 1999-12-31 in the header.  
+- Please read the document "WR Assessment, Style, and Submission Guidance" (see Moodle).  
+- By submitting this assignment, you confirm that you have read and will adhere to the guidance on AI set out in that document.  
+- Remember that you are responsible for everything that you submit.  
+- Word, page, figure, and table limits do not apply at the DRAFT stage, but are included here for reference
+
+```{r setup, include=FALSE}
+# Code to setup packages should go here, for example:
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(RColorBrewer)
+```
+
+
+# a)
+*include an output of three rows*
+
+```{r a}
+#removing entries that would cause duplicates
+df1 <- subset(read.csv("ECN_VW1.csv"), STEMID != 999)
+
+df2 <- subset(df1, FIELDNAME %in% c("DIAMETER", "HEIGHT", "NUM_STEMS", "DISTANCE"))
+
+df3 <- reshape(df2, timevar = "FIELDNAME",
+               idvar = c("SITECODE", "SYEAR", "PLOTPID", "CELLID", "TREEID", "STEMID", "TREE_SPEC"),
+               direction = "wide")
+
+names(df3) <- sub("^VALUE\\.", "", names(df3))
+
+df4 <- df3[, c("SITECODE", "SYEAR", "TREE_SPEC", "DIAMETER", "HEIGHT", "NUM_STEMS", "DISTANCE")]
+
+head(df4, 3)
+
+```
+
+# b)
+*Limit: 50 words + 1 table.*
+
+```{r b}
+model <- lm(HEIGHT ~ DIAMETER, data = df4)
+summary(model)
+
+plot(df4$DIAMETER,df4$HEIGHT)
+abline(model,col="red")
+```
+Diameter is chosen as the predictor for height because the relationship is normally positive and linear. This is because a larger diameter is required to support the tree as otherwise it may be prone to falling over.
+
+
+# c)
+*Limit: 400 words + 10 figures + 5 tables*
+
+```{r c}
+T05 <- subset(df4, SITECODE == "T05")
+T06 <- subset(df4, SITECODE == "T06")
+T08 <- subset(df4, SITECODE == "T08")
+#T09 has 999 and N/A values
+
+modelT05 <- lm(HEIGHT ~ DIAMETER, data = T05)
+modelT06 <- lm(HEIGHT ~ DIAMETER, data = T06)
+modelT08 <- lm(HEIGHT ~ DIAMETER, data = T08)
+
+plot(df4$DIAMETER, df4$HEIGHT,
+     main = "All Sites",
+     xlab = "Diameter", ylab = "Height")
+abline(lm(HEIGHT ~ DIAMETER, data = df4), col = "red")
+plot(T05$DIAMETER, T05$HEIGHT,
+     main = "T05",
+     xlab = "Diameter", ylab = "Height")
+abline(lm(HEIGHT ~ DIAMETER, data = T05), col = "red")
+plot(T06$DIAMETER, T06$HEIGHT,
+     main = "T06",
+     xlab = "Diameter", ylab = "Height")
+abline(lm(HEIGHT ~ DIAMETER, data = T06), col = "red")
+plot(T08$DIAMETER, T08$HEIGHT,
+     main = "T08",
+     xlab = "Diameter", ylab = "Height")
+abline(lm(HEIGHT ~ DIAMETER, data = T08), col = "red")
+
+cor(df4$DIAMETER, df4$HEIGHT, use = "complete.obs")
+cor(T05$DIAMETER, T05$HEIGHT, use = "complete.obs")
+cor(T06$DIAMETER, T06$HEIGHT, use = "complete.obs")
+cor(T08$DIAMETER, T08$HEIGHT, use = "complete.obs")
+
+
+plot(model, which = 1,
+     main = "Residuals vs Fitted All")
+plot(modelT05, which = 1,
+     main = "Residuals vs Fitted T05")
+plot(modelT06, which = 1,
+     main = "Residuals vs Fitted T06")
+plot(modelT08, which = 1,
+     main = "Residuals vs Fitted T08")
+
+```
+
+Each linear regression model shows a positive relationship as expected. However, different sites have a huge amount of variation between them. 
+Site T05 has very little data compared to the other sites but the correlation is strong (above 0.9). This is most likely due to less variation in trees as there are less measurements meaning the height:diameter ratio will be more similar across measurements. 
+Site T06 has much weaker correlation (~0.4) but this could be due to outliers and extreme values. One such value is were the height is very high (151) which is clearly erroneous as the other height are all less than 30. There seems to be two sections: the section less than 50 diameter and the section with greater than 50 diameter. 
+Site T08 has some correlation (~0.6). We can see on the graph that there seems to be many values bunched together with less than 50 diameter. There seems to also be a tree with a height of 0. Some measuremens have very high diamters but the height is not so high perhaps suggesting the model is not linear. This is likely a difference of trree species.
+
+For the residuals, there is a lot of variance in terms of the quality of fit.
+The all sites residual has clustering on the left suggesting the data is not evenly distributed. The slight upwards and then downwards trend suggests that the relationship may not be linear. There is also an erroneous data point which is the outlier.
+In site T05, the points seem to be random which is good however there are more points below 0 due to overpredicting which suggests that the model may be biased. As there are not enough data points, the plot isn't very reliable.
+Site T06, paints a similar picture to the all sites residual with slight upwards and downwards trend as well as the outlier. As well as some clustering on the left.
+Again, in site T08, the same things are happening but to the extreme. This is seen by a huge amount of clustering on the left with a clear upwards trend followed by a clear downwards trend due to a handful of values.
+
+
+# d)
+*Limit: 300 words + 4 figures + 4 tables*
+
+Clearly in site T05, the main issue is the small sample size which makes the model very sensitive to slight outliers creating high variance. Although there is high correlation, the model is not very reliable.
+
+Moving to site T06, the outlier should be removed as it distorts the model and is likely not an accurate measurement.
+
+In site T08, there is clearly non-linearity going on with many small diameter trees and a few large diameter ones that do not follow the same trend. This suggests that the relationship may differ by tree species. A good idea would be to split the site by diameter. Additionally, we should remove the tree with 0 height.
+
+```{r d}
+#T05 is not easily fixed as the problem lies in the recorded data
+
+#T06
+T06new <- subset(T06, HEIGHT < 100)
+modelT06new <- lm(HEIGHT ~ DIAMETER, data = T06new)
+summary(modelT06new)
+plot(T06new$DIAMETER, T06new$HEIGHT, main="T06 new")
+abline(modelT06new, col="red")
+plot(modelT06new, which = 1,
+     main = "Residuals vs Fitted T06 new")
+
+#T08
+T08new <- subset(T08, HEIGHT > 0 & DIAMETER > 0 & !is.na(HEIGHT) & !is.na(DIAMETER))
+
+T08low  <- subset(T08new, DIAMETER < 50)
+modelT08low  <- lm(HEIGHT ~ DIAMETER, data = T08low)
+summary(modelT08low)
+plot(T08low$DIAMETER, T08low$HEIGHT,
+     main = "T08: Diameter < 50",
+     xlab = "Diameter", ylab = "Height")
+abline(modelT08low, col = "red")
+plot(modelT08low, which = 1,
+     main = "Residuals: Diameter < 50")
+```
+
+The new plots have improved the fits especially for site T08 and a log as well as only including trees with diameter under 50 seems to have created a much better fit. For the new T06 plot, it is clear to see that many trees have the same height which is creating some problems. We can fix this by, similarly to T08, removing the diameters over 50. We should also remove the small diameter, large height outlier.
+
+```{r}
+T06new2 <- subset(T06new, HEIGHT < 25 & DIAMETER < 50)
+modelT06new2 <- lm(HEIGHT ~ DIAMETER, data = T06new2)
+summary(modelT06new2)
+plot(T06new2$DIAMETER, T06new2$HEIGHT, main="T06 new 2")
+abline(modelT06new2, col="red")
+plot(modelT06new2, which = 1, main = "Residuals vs Fitted T06 new 2")
+```
+
+This seems to have worked as residuals are fairly spread out and around 0. Although there are stil a lot of outliers.

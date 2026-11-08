@@ -1,0 +1,111 @@
+---
+title: "ST117 Individual DRAFT Written Report - Phase 2 Task 4 (Fine grains - Butterflies)"
+author: "My WARWICK ID 5687139 (Report Pod MS-19)"
+date: "2026-04-21" 
+output: pdf_document
+geometry: top=1cm, bottom=1cm
+---
+- Please replace 1234567, XY-ab in filename.  
+- Please replace 1234567, XY-ab, and 1999-12-31 in the header.  
+- Please read the document "WR Assessment, Style, and Submission Guidance" (see Moodle).  
+- By submitting this assignment, you confirm that you have read and will adhere to the guidance on AI set out in that document.  
+- Remember that you are responsible for everything that you submit.  
+- Word, page, figure, and table limits do not apply at the DRAFT stage, but are included here for reference
+
+```{r setup, include=FALSE}
+# Code to setup packages should go here, for example:
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(RColorBrewer)
+```
+
+
+# a)
+*include an output of three rows*
+
+```{r a}
+gra <- read.csv("ECN_VF1.csv")
+btf <- read.csv("ECN_IB1.csv")
+
+btf$SDATE <- as.Date(btf$SDATE, format = "%d-%b-%y")
+btf$SYEAR  <- as.numeric(format(btf$SDATE, "%Y"))
+btf <- subset(btf, FIELDNAME != "XX")
+
+gra <- subset(gra, FIELDNAME == "VEG_SPEC")
+
+btfCounts <- aggregate(VALUE ~ SITECODE + SYEAR,
+                       data = btf,
+                       sum)
+names(btfCounts)[3] <- "BTFCOUNT"
+graCount <- aggregate(VALUE ~ SITECODE + SYEAR,
+                      data = gra,
+                      FUN = function(x) length(unique(x)))
+names(graCount)[3] <- "GRACOUNT"
+df <- merge(btfCounts, graCount, by = c("SITECODE","SYEAR"))
+head(df, 3)
+```
+
+# b)
+*Limit: 100 words + 1 figure*
+
+```{r b}
+ggplot(df, aes(x = GRACOUNT, y = BTFCOUNT,
+               colour = factor(SITECODE))) +
+  geom_point(size = 3) +
+  labs(x = "Number of Unique Fine-Grain Species",
+       y = "Total Butterfly Count",
+       colour = "Site Code",
+       title = "Butterflies vs Fine-Grain Species")
+```
+
+It is clear that the recordings from the same site are bunched together as they are all contained in a section of the graph which is different from a different site. In addition, many sites have a very low amount of butterfly recordings, especially sites T03 and T11. In addition, generally, the higher the mean butterfly count, the higher the variance of butterfly count.
+
+# c)
+*Limit: 200 words + 5 figures + 1 table*
+
+```{r c}
+model <- lm(BTFCOUNT ~ GRACOUNT, data = df)
+summary(model)
+
+plot(df$GRACOUNT, df$BTFCOUNT)
+abline(model,col="red")
+
+cor(df$GRACOUNT, df$BTFCOUNT, use = "complete.obs")
+```
+The plot shows there is very weak correlation (~0.2) between the number of unique fine grain species and total annual butterfly count. This is likely affected by the very high butterfly counts in some sites. There is a huge amount of variance.
+
+# d)
+*Limit: 100 words + 12 figures + 12 tables*
+
+```{r d}
+list <- split(df, df$SITECODE)
+
+models <- lapply(list, function(d) {
+  lm(BTFCOUNT ~ GRACOUNT, data = d)
+})
+
+lapply(models, summary)
+
+par(mfrow = c(2, 3))
+
+for(site in names(list)) {
+  d <- list[[site]]
+  m <- models[[site]]
+  
+  plot(d$GRACOUNT, d$BTFCOUNT,
+       main = paste("Site", site),
+       xlab = "GRACOUNT",
+       ylab = "BTFCOUNT")
+  abline(m, col = "red")
+}
+
+sapply(list, function(d) {
+  cor(d$GRACOUNT, d$BTFCOUNT, use = "complete.obs")
+})
+```
+Some sites show a positive relationship while others show a negative one. Sites with the most positive correlation include T02 (~0.35) and T04 (~0.3) while T11 has some weak negative correlation (~-0.2). Some sites (T07, T08, T09) show no correlation at all while some (T05, T06, T10) also show very little. Site T12 only has 2 data points and is therefore not useful. Across each plot there is a huge amount of variance suggesting that fine grain diversity is one of many factors affecting butterfly population.

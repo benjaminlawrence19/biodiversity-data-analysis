@@ -1,0 +1,148 @@
+---
+title: "ST117 Individual DRAFT Written Report - Phase 2 Task 2 (Moths-Flight windows)"
+author: "My WARWICK ID 5687139 (Report Pod MS-19)"
+date: "2026-04-19" 
+output: pdf_document
+geometry: top=1cm, bottom=1cm
+---
+- Please replace 1234567, XY-ab in filename.  
+- Please replace 1234567, XY-ab, and 1999-12-31 in the header.  
+- Please read the document "WR Assessment, Style, and Submission Guidance" (see Moodle).  
+- By submitting this assignment, you confirm that you have read and will adhere to the guidance on AI set out in that document.  
+- Remember that you are responsible for everything that you submit.  
+- Word, page, figure, and table limits do not apply at the DRAFT stage, but are included here for reference
+
+```{r setup, include=FALSE}
+# Code to setup packages should go here, for example:
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(RColorBrewer)
+```
+
+
+# a)
+*Limit: 150 words + 6 figures*
+
+```{r a}
+df <- subset(read.csv("ECN_IM1.csv"), FIELDNAME != "Q1" & FIELDNAME != "XX")
+
+df$SDATE <- as.Date(df$SDATE, format = "%d-%b-%y")
+df$WEEK <- as.numeric(format(df$SDATE, "%U")) + 1
+
+agg <- aggregate(VALUE ~ WEEK + SITECODE, data = df, sum)
+sites <- c("T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T12")
+
+par(mfrow = c(2,3))
+
+for (i in sites) {
+  d <- subset(agg, SITECODE == i)
+  tbl <- xtabs(VALUE ~ WEEK, data = d)
+  
+  barplot(tbl,
+          main = paste("Site", i),
+          xlab = "Week",
+          ylab = "Moth count")
+}
+
+par(mfrow = c(2,3))
+
+agg2 <- aggregate(VALUE ~ WEEK, data = df, sum)
+tbl2 <- xtabs(VALUE ~ WEEK, data = agg2)
+barplot(tbl2,
+        main = paste("All Sites"),
+        xlab = "Week",
+        ylab = "Moth count")
+
+species <- c(318, 469, 574, 393, 302)
+
+for (i in species) {
+  d2 <- subset(df, FIELDNAME == i)
+  agg3 <- aggregate(VALUE ~ WEEK, data = d2, sum)
+  tbl3 <- xtabs(VALUE ~ WEEK, data = agg3)
+  
+  barplot(tbl3, main = paste("Species", i))
+}
+```
+Starting with the all sites plot, it is clearly unimodal with its peak between week 30 and week 35 which roughly corresponds to August. There is a steep rise around week 20 (late May) and a steep drop around week 40 (early October). Clearly, this corresponds to a high moth count in the summer. In the winter months (49-53 and 1-8), the moths count is near 0. This is likely due to insects emerging wit higher temperatures.
+Species 318 and 469 have very similar plots being unimodal with a peak around week 35 and drop offs either side. This is for the same reason as for all sites.
+Species 574 is also unimodal but the moths recorded only appear in a very small window with substantial recordings only in weeks 38-41 with peaks in weeks 39 and 40.
+Species 393 and 302 are both bimodal with a small first peak at week 25 for 393 and 22 for 302 and a larger peak later around week 35 for both. Species 302's smaller peak is much more noticeable compared to 392. Both has few to no recordings from late autumn to early spring. This is likely due to two generations of moths produced a year.
+
+# b)
+*Limit: 150 words + 1 figure*
+
+```{r b}
+df$YEAR <- as.numeric(format(df$SDATE, "%Y"))
+df <- aggregate(WEEK ~ SITECODE + FIELDNAME + YEAR,
+                data = df,
+                FUN = function(x) c(first = min(x), last = max(x)))
+df <- data.frame(df[, 1:3], FIRSTWEEK = df$WEEK[, 1], LASTWEEK  = df$WEEK[, 2])
+df$LENGTH <- df$LASTWEEK - df$FIRSTWEEK + 1
+
+hist(df$LENGTH,
+     main = "Distribution of Flight Window Lengths",
+     xlab = "Flight window length (weeks)",
+     ylab = "Frequency",
+     breaks = 50)
+```
+
+The distribution shows a spike at length 1 which is unlikely to have a biological cause. This is likely caused by sampling and detection bias as rare species may only be recorded once. In addition, uneven sampling effort may have affected observations due to missed recordings. Furthermore, other species with higher counts have much longer flight windows which suggests the spike is not accurate.
+
+# c)
+*Limit: mathematical derivations + 200 words + 1 figure + 1 table*
+
+Guidance on using LaTeX is provided in Log 5. Alternatively, you may write mathematical derivations by hand and include them as an image.
+
+```{r c}
+df2 <- subset(df, LENGTH >= 2)
+x <- df2$LENGTH
+n <- length(df2$LENGTH)
+
+knitr::include_graphics("MoM.pdf")
+
+mu <- mean(x)
+s2 <- var(x)
+
+lambda <- mu
+alpha <- mu^2/s2
+beta <- mu/s2
+p <- mu/s2
+r <- mu^2/(s2 - mu)
+
+hist(x, 
+     prob=TRUE, 
+     breaks=50,
+     main="Empirical Distribution",
+     xlab="Weeks")
+
+storted <- sort(unique(x))
+
+lines(storted, dpois(storted, lambda), type = "l", col = "darkgreen")
+curve(dgamma(x, shape = alpha, rate = beta), add = TRUE, col = "blue")
+lines(storted, dnbinom(storted, size=r, prob=p), type = "l", col = "red")
+
+legend("topright",
+       legend=c("Poisson","Gamma","Negative Binomial"),
+       col=c("darkgreen","blue","red"))
+
+poi <- sum(dpois(x, lambda, log=TRUE))
+gamma <- sum(dgamma(x, shape=alpha, rate=beta, log=TRUE))
+nb <- sum(dnbinom(x, size=r, prob=p, log=TRUE))
+
+lambda
+alpha
+beta
+p
+r
+poi
+gamma
+nb
+```
+
+Starting with the Poisson distribution, it has the lowest log likelihood and we can clearly see on the graph that it doesn't match the data well. The graph has its peak at the left of the graph and continues to decrease exponentially. In comparison, the poisson model predicts a peak further to the right with a sharp increase and decrease. However, this may be due to the same problem in part b.
+The gamma and negative binomial distributions are fairly similar with gamma having a slightly higher log likelihood as can also be seen on the graph as the gamma starts slightly higher than the negative binomial. However, gamma is a continuous distribution distribution and therefore only provides an approximation for this discrete data. Therefore, the negative binomial is the most suitable model.

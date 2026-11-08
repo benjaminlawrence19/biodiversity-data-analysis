@@ -1,0 +1,139 @@
+---
+title: "ST117 Individual DRAFT Written Report - Phase 2 Task 3 (Woodland wdletation - Butterflies and Moths)"
+author: "My WARWICK ID 5687139 (Report Pod MS-19)"
+date: "2026-04-20" 
+output: pdf_document
+geometry: top=1cm, bottom=1cm
+---
+- Please replace 1234567, XY-ab in filename.  
+- Please replace 1234567, XY-ab, and 1999-12-31 in the header.  
+- Please read the document "WR Assessment, Style, and Submission Guidance" (see Moodle).  
+- By submitting this assignment, you confirm that you have read and will adhere to the guidance on AI set out in that document.  
+- Remember that you are responsible for everything that you submit.  
+- Word, page, figure, and table limits do not apply at the DRAFT stage, but are included here for reference
+
+```{r setup, include=FALSE}
+# Code to setup packages should go here, for example:
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(viridis)
+library(hrbrthemes)
+library(RColorBrewer)
+```
+
+
+# a)
+*include an output of three rows*
+
+```{r a}
+wdl <- read.csv("ECN_VW1.csv")
+btf <- read.csv("ECN_IB1.csv")
+mth <- read.csv("ECN_IM1.csv")
+
+btf$SDATE <- as.Date(btf$SDATE, format = "%d-%b-%y")
+btf$SYEAR  <- as.numeric(format(btf$SDATE, "%Y"))
+btf <- subset(btf, FIELDNAME != "XX")
+
+wdl <- subset(wdl, !is.na(TREE_SPEC))
+
+btfCounts <- aggregate(VALUE ~ SITECODE + SYEAR,
+                       data = btf,
+                       sum)
+names(btfCounts)[3] <- "BTFCOUNT"
+wdlCount <- aggregate(TREE_SPEC ~ SITECODE + SYEAR,
+                      data = wdl,
+                      FUN = function(x) length(unique(x)))
+names(wdlCount)[3] <- "WDLCOUNT"
+btfData <- merge(btfCounts, wdlCount, by = c("SITECODE","SYEAR"))
+head(btfData, 3)
+
+mth$SDATE <- as.Date(mth$SDATE, format = "%d-%b-%y")
+mth$SYEAR  <- as.numeric(format(mth$SDATE, "%Y"))
+mth <- subset(mth, FIELDNAME != "Q1" & FIELDNAME != "XX")
+
+mthCounts <- aggregate(VALUE ~ SITECODE + SYEAR,
+                       data = mth,
+                       sum)
+names(mthCounts)[3] <- "MTHCOUNT"
+mthData <- merge(mthCounts, wdlCount, by = c("SITECODE","SYEAR"))
+head(mthData, 3)
+```
+
+# b)
+*Limit: 50 words + 2 figures*
+
+```{r b}
+ggplot(btfData, aes(x = WDLCOUNT, y = BTFCOUNT,
+                    colour = factor(SYEAR),
+                    shape = SITECODE)) +
+  geom_point(size = 3) +
+  labs(x = "Number of Unique Woodland Vegetation Species",
+       y = "Total Butterfly Count",
+       colour = "Year",
+       shape = "Site Code",
+       title = "Butterflies vs Woodland Species")
+
+ggplot(mthData, aes(x = WDLCOUNT, y = MTHCOUNT,
+                    colour = factor(SYEAR),
+                    shape = SITECODE)) +
+  geom_point(size = 3) +
+  labs(x = "Number of Unique Woodland Vegetation Species",
+       y = "Total Moth Count",
+       colour = "Year",
+       shape = "Site Code",
+       title = "Moths vs Woodland Species")
+```
+
+# c)
+*Limit: 200 words*
+
+Starting with the Butterfly plot, there are two outliers for sites T05 and T06. In addition, there is some clustering with high numbers of unique species and there doesn't seem to be much correlation with butterfly counts. This may be due to many other factors other than woodland diversity. This suggests a linear model may not be suitable.
+Similarly with the moth plot, we again have outliers with sites T05 and T06. Furthermore, there is clustering with high numbers of unique species, again with little correlation with moth counts. There also seems to be an increase in variance of moth counts as the woodland diversity increases. Again, a linear model may not be suitable.
+ 
+# d)
+*Limit: 300 words + 5 figures + 2 tables*
+
+```{r d}
+newData <- merge(btfCounts, mthCounts,
+                 by = c("SITECODE","SYEAR"))
+
+plot(newData$BTFCOUNT, newData$MTHCOUNT,
+     xlab = "Total Butterfly Count",
+     ylab = "Total Moth Count",
+     main = "Butterflies vs Moths")
+cor(newData$BTFCOUNT, newData$MTHCOUNT)
+
+model <- lm(MTHCOUNT ~ BTFCOUNT, data = newData)
+summary(model)
+abline(model, col = "red", lwd = 2)
+
+plot(model$fitted.values, model$residuals,
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted")
+abline(h = 0, col = "red")
+
+plot(log(newData$BTFCOUNT), log(newData$MTHCOUNT),
+     xlab = "log(Butterflies)",
+     ylab = "log(Moths)",
+     main = "Log-Log Relationship")
+cor(log(newData$BTFCOUNT), log(newData$MTHCOUNT))
+
+logModel <- lm(log(newData$MTHCOUNT) ~ log(newData$BTFCOUNT))
+summary(logModel)
+abline(logModel, col = "red", lwd = 2)
+
+plot(logModel$fitted.values, logModel$residuals,
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted")
+abline(h = 0, col = "red")
+```
+
+Firstly, I plotted butterfly against moth counts. There some clustering towards lower moth counts. There is weak positive correlation (~0.3) which may have been affected by the two outliers where the moth count was unusually high.
+Next, I plotted residuals against fitted values. There is a clear inbalance towards lower residuals and many of the points are on the right side of the graph. 
+Then, I plotted the log-log relationship. This is more promising as the points are closer to the model line. The correlation is similar (~0.3) and still not very strong. This is due to the high amount of variance.
+The residuals for this model are more balanced about 0 but variance is clearly high. The points are clustered on the right side of the graph.
